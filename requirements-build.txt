@@ -1,0 +1,3 @@
+# Dependencies needed only to build the standalone Windows executable.
+-r requirements.txt
+pyinstaller>=6.0
