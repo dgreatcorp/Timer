@@ -15,7 +15,7 @@ optional real-time clock sits above or below the countdown.
     is a touch dimmer, so you can see what the arrows will change.
   - The `:` blinks while the timer runs.
 - **TIMEUP alert** — when the countdown reaches zero the whole screen turns
-  solid red with big bold white **TIMEUP** text and a short system beep. It
+  solid red with big bold white **TIMEUP** text. It
   stays until you press `Space` (restart) or `Delete`/`Enter` (reset). Resetting
   a finished timer returns it to the default **10:00**.
 - **Real-time clock** (time + date only, no time-zone name) that can sit
@@ -117,9 +117,7 @@ checks pass — used by `build.bat` so a broken build never ships.
 
 - **Config file:** `%APPDATA%\KeyboardTimer\config.json` — delete it to reset
   all settings.
-- **No beep?** The TIMEUP beep uses the Windows `winsound` API; on systems
-  without a beep device it is silently skipped (the red screen is the primary
-  alert).
+- **Silent alert:** TIMEUP is visual only (the red screen); no sound is played.
 - **"No match" in the zone picker:** type a valid IANA name instead, e.g.
   `Europe/Berlin` or `Asia/Kolkata`.
 - Time zone data is embedded in the exe (`tzdata`), so offsets and DST are

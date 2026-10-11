@@ -22,7 +22,9 @@ import time
 import traceback
 
 from PyQt6.QtCore import QEvent, QSize, Qt, QTimer
-from PyQt6.QtGui import QFont, QFontDatabase, QIcon, QKeyEvent
+from PyQt6.QtGui import (
+    QColor, QFont, QFontDatabase, QFontMetrics, QIcon, QKeyEvent, QPainter,
+)
 from PyQt6.QtWidgets import (
     QApplication, QFrame, QGridLayout, QHBoxLayout, QLabel, QLineEdit,
     QListWidget, QListWidgetItem, QVBoxLayout, QWidget,
@@ -99,10 +101,35 @@ class ScaledLabel(QLabel):
     Its *minimum* size is reported as zero so the big fonts can never inflate
     the window's minimum size, while its *preferred* size still follows the
     text so the layout can centre it normally.
+
+    ``stretch_y`` (>1) stretches the glyphs vertically only - used to make the
+    "TIMEUP" word fill more of the tall middle area without widening it.
     """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.stretch_y = 1.0
+        self.text_color = None
 
     def minimumSizeHint(self):  # noqa: N802
         return QSize(0, 0)
+
+    def paintEvent(self, event):  # noqa: N802
+        if abs(self.stretch_y - 1.0) < 1e-3:
+            super().paintEvent(event)
+            return
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.TextAntialiasing, True)
+        painter.setFont(self.font())
+        color = self.text_color
+        if color is None:
+            color = self.palette().color(self.foregroundRole())
+        painter.setPen(color)
+        rect = self.rect()
+        painter.translate(rect.center())
+        painter.scale(1.0, self.stretch_y)
+        painter.translate(-rect.center())
+        painter.drawText(rect, self.alignment(), self.text())
 
 
 class TimerApp(QWidget):
@@ -220,6 +247,7 @@ class TimerApp(QWidget):
         self.timeup_lbl = ScaledLabel("TIMEUP", self.middle)
         self.timeup_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.timeup_lbl.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        self.timeup_lbl.text_color = QColor(FG)
         self.timeup_lbl.hide()
 
         mg.addWidget(self.digits, 0, 0)
@@ -307,8 +335,11 @@ class TimerApp(QWidget):
         self.time_lbl.setFont(self.f_time)
         self.date_lbl.setFont(self.f_date)
         self.timeup_lbl.setFont(self.f_timeup)
-        self.time_lbl.setFont(self.f_time)
-        self.date_lbl.setFont(self.f_date)
+        # Stretch "TIMEUP" vertically so it fills the tall middle area.  Only the
+        # height changes - the width (and centring) is untouched.
+        text_h = max(1, QFontMetrics(self.f_timeup).height())
+        self.timeup_lbl.stretch_y = min(1.9, max(1.0, (mh * 0.92) / text_h))
+        self.timeup_lbl.update()
 
     def resizeEvent(self, event):  # noqa: N802
         super().resizeEvent(event)
@@ -475,17 +506,6 @@ class TimerApp(QWidget):
         self.timeup = True
         self.remaining_ms = 0.0
         self._apply_theme()
-        self._play_beep()
-
-    def _play_beep(self):
-        """Short system beep (Windows only; silently skipped elsewhere)."""
-        if self.smoke:
-            return
-        try:
-            import winsound
-            winsound.MessageBeep(winsound.MB_ICONHAND)
-        except Exception:
-            pass
 
     def _save(self):
         if self.smoke:
